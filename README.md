@@ -6,7 +6,10 @@ Giant parrot in the sense of "What is standing on the shoulder of giants".
 ## Build
 
 ```{bash}
-# In src/
-go generate
-go build -ldflags "-H windowsgui" -o giant-parrot.exe
+.\build.bat
 ```
+
+## Viewing
+
+1. Launch ``giant-parrot.exe``
+2. You can inspect using the chrome inspector by pressing F12.
