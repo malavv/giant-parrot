@@ -1,50 +1,120 @@
 <!doctype html>
-<html>
+<html lang="en">
   <head>
-    <title>Counter</title>
+    <meta charset="utf-8">
+    <link rel="shortcut icon" type="image/png" href="favicon.png">
+    <title>Giant Parrot Citation Graph</title>
     <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
-    body { height: 100vh; display: flex; align-items: center; justify-content: center; background-color: #f1c40f; font-family: 'Helvetika Neue', Arial, sans-serif; font-size: 28px; }
-    .counter-container { display: flex; flex-direction: column; align-items: center; }
-    .counter { text-transform: uppercase; color: #fff; font-weight: bold; font-size: 3rem; }
-    .btn-row { display: flex; align-items: center; margin: 1rem; }
-    .btn { cursor: pointer; min-width: 4em; padding: 1em; border-radius: 5px; text-align: center; margin: 0 1rem; box-shadow: 0 6px #8b5e00; color: white; background-color: #E4B702; position: relative; font-weight: bold; }
-    .btn:hover { box-shadow: 0 4px #8b5e00; top: 2px; }
-    .btn:active{ box-shadow: 0 1px #8b5e00; top: 5px; }
+      * { margin: 0; padding: 0; user-select: none; }
+      body { height: 100vh; }
+      svg { padding: 100px; }
+      .node { cursor: pointer; }
+      .overlay { background-color: #EEE; }
+      .node circle { fill: #fff; stroke: steelblue; stroke-width: 1.5px; }
+      .node text { font-size: 10px; font-family: sans-serif; }
+      .link { fill: none; stroke: #ccc; stroke-width: 1.5px; }
+      .templink { fill: none; stroke: red; stroke-width: 3px; }
+      .ghostCircle.show { display: block; }
+      .ghostCircle, .activeDrag .ghostCircle { display: none; }
     </style>
+
+    <script defer src="https://d3js.org/d3.v5.min.js"></script>
   </head>
+
   <body onload=start()>
+
     <!-- UI layout -->
-    <div class="counter-container">
-      <div class="counter"></div>
-      <div class="btn-row">
-        <div class="btn btn-incr">+1</div>
-        <div class="btn btn-decr">-1</div>
-      </div>
-    </div>
+    <button onclick="draw()">Draw</button>
+    <svg></svg>
 
     <!-- Connect UI actions to Go functions -->
     <script>
-      const counter = document.querySelector('.counter');
-      const btnIncr = document.querySelector('.btn-incr');
-      const btnDecr = document.querySelector('.btn-decr');
 
-      // We use async/await because Go functions are asynchronous
-      const render = async () => {
-        counter.innerText = `Count: ${await window.counterValue()}`;
-      };
+      function init() {
+        console.log("init js processing.");
+      }
 
-      btnIncr.addEventListener('click', async () => {
-        await counterAdd(1); // Call Go function
-        render();
-      });
+      function draw() {
+          let svg = d3.select("svg")
+            .style("width", 500 + 'px')
+            .style("height", 500 + 'px');
 
-      btnDecr.addEventListener('click', async () => {
-        await counterAdd(-1); // Call Go function
-        render();
-      });
+          svg.append('g').attr('class', 'nodes');
+          svg.append('g').attr('class', 'links');
 
-      render();
+          let tree = new Tree(16479230);
+          let root = d3.hierarchy(tree.getData());
+          let treeLayout = d3.tree();
+          treeLayout.size([500, 500]);
+          treeLayout(root);
+
+          d3.select("svg g.nodes").selectAll("*").remove();
+          d3.select("svg g.links").selectAll("*").remove();
+
+          // Nodes
+          d3.select('svg g.nodes')
+              .selectAll('circle.node')
+              .data(root.descendants())
+              .enter()
+              .append('circle')
+              .classed('node', true)
+              .on("click", d => open(d.data.data.id))
+              .on("contextmenu", function (d, i) {
+                d3.event.preventDefault();
+                tree.getSubTree(d.data.data.id).KillYourChildren();
+                drawD3Tree(tree);
+              })
+              .attr('cx', d => d.x).attr('cy', d => d.y)
+              .attr('r', 4);
+
+          // Links
+          d3.select('svg g.links')
+              .selectAll('line.link')
+              .data(root.links())
+              .enter()
+              .append('line')
+              .classed('link', true)
+              .attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+              .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+
+
+        console.log("end of draw call")
+      }
+      class Tree {
+
+        constructor(rootID) {
+          this.rootID = rootID;
+          this.children = [];
+        }
+
+        getData() {
+          return {
+            data: { name: this.rootID, id: this.rootID },
+            children: this.children.map(tree => tree.getData())
+          }
+        }
+
+
+        KillYourChildren() {
+          this.children = [];
+        }
+
+        getSubTree(id) {
+          if (this.rootID === id)
+            return this;
+
+          for (let child of this.children) {
+            let tree = child.getSubTree(id);
+            if (tree != null)
+              return tree;
+          }
+          return null;
+        }
+
+        AddRelation(parent, child) {
+          this.children.push(new Tree(child));
+        }
+      }
     </script>
   </body>
 </html>
