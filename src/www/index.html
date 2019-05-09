@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="styles.css">
 
     <script defer src="//d3js.org/d3.v3.js"></script>
+    <script defer src="http://labratrevenge.com/d3-tip/javascripts/d3.tip.v0.6.3.js"></script>
   </head>
 
   <body onload=start()>
@@ -19,81 +20,18 @@
     <svg onclick="draw()"></svg>
 
     <script type="module">
-      export default class Tree {
-
-        constructor(rootID) {
-          this.rootID = rootID;
-          this.children = [];
-        }
-
-        getData() {
-          return {
-            data: { name: this.rootID, id: this.rootID },
-            children: this.children.map(tree => tree.getData())
-          }
-        }
-
-
-        KillYourChildren() {
-          this.children = [];
-        }
-
-        getSubTree(id) {
-          if (this.rootID === id)
-            return this;
-
-          for (let child of this.children) {
-            let tree = child.getSubTree(id);
-            if (tree != null)
-              return tree;
-          }
-          return null;
-        }
-
-        AddRelation(parent, child) {
-          this.children.push(new Tree(child));
-        }
-      }
-      window.Tree = Tree;
-    </script>
-    <script type="module">
-      window.dat = {
-        name: 1,
-        children: [
-          {
-            name: 2, children: [
-              {name: 5, children: [{name: 7, children: []}]},
-              {name: 6, children: [{name: 10, children: []}]}
-            ]
-          },
-          {
-            name: 3, children: [
-              {name: 6, children: [{name: 10, children: []}]}
-            ]
-          },
-          {
-            name: 4,
-            children: [
-              {name: 8, children: [{name: 9, children: []}]}
-
-            ]
-          },
-          {name: 6, children: [{name: 10, children: []}]}
-        ]
-      };
-
       window.dag = {
         "nodes": [
-          { "name": "node-0" }, // 0
-          { "name": "node-1" }, // 1
-          { "name": "node-2" }, // 2
-          { "name": "node-3" }, // 3
-          { "name": "node-4" }, // 4
-          { "name": "node-5" }, // 5
-          { "name": "node-6" }, // 6
-          { "name": "node-7" }, // 7
-          { "name": "node-8" }, // 8
-          { "name": "node-9" }  // 9
+          { "id": 0, "name": "node-0" }, // 0
+          { "id": 1, "name": "node-1" }, // 1
+          { "id": 2, "name": "node-2" }, // 2
+          { "id": 3, "name": "node-3" }, // 3
+          { "id": 4, "name": "node-4" }, // 4
+          { "id": 5, "name": "node-5" }, // 5
+          { "id": 6, "name": "node-6" }, // 6
+          { "id": 7, "name": "node-7" }, // 7
+          { "id": 8, "name": "node-8" }, // 8
+          { "id": 9, "name": "node-9" }  // 9
         ],
         "links": [
           { "source": 0, "target": 1 },
@@ -124,6 +62,8 @@
 
       let le, ne;
 
+      let tip;
+
       function init(size) {
         appSize = size;
         fill = d3.scale.category20();
@@ -139,6 +79,13 @@
         le = svg.selectAll(".link");
         ne = svg.selectAll(".node");
 
+        tip = d3.tip()
+                .attr('class', 'd3-tip')
+                .offset([-10, 0])
+                .html(d => `<strong>Title:</strong> <span style='color:red'>${d.name}</span>`);
+
+        svg.call(tip);
+
         console.log("end of js initialization");
       }
 
@@ -151,21 +98,22 @@
              .start();
 
         // Update links.
-        le = le.data(dag.links, d => d.source.name + ',' +  d.target.name);
+        le = le.data(dag.links, d => `${d.source.id},${d.target.id}`);
         le.exit().remove();
         le.enter()
             .insert("line", ".node")
             .attr("class", "link");
 
-        ne = ne.data(dag.nodes, d => d.name);
-
+        // Update nodes
+        ne = ne.data(dag.nodes, d => d.id);
         ne.exit().remove();
-
         let nodeEnter = ne.enter().append("g")
                 .attr("class", "node")
                 .on("click", click);
-
-        nodeEnter.append("circle").attr("r", radius - .75);
+        nodeEnter.append("circle")
+                .attr("r", radius - .75)
+                .on('mouseover', tip.show)
+                .on('mouseout', tip.hide);
 
         console.log("end of draw call");
       }
@@ -175,8 +123,8 @@
         if (d3.event.defaultPrevented) return; // ignore drag
 
         if (!dat.unusedLinks) dat.unusedLinks = [];
-        dag.links.filter(lk => lk.source.name === d.name).forEach(lk => dat.unusedLinks.push(lk));
-        dag.links = dag.links.filter(lk => lk.source.name !== d.name);
+        dag.links.filter(lk => lk.source.id === d.id).forEach(lk => dat.unusedLinks.push(lk));
+        dag.links = dag.links.filter(lk => lk.source.id !== d.id);
 
         draw();
       }
