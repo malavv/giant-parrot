@@ -10,7 +10,7 @@
     </style>
     <link rel="stylesheet" href="styles.css">
 
-    <script defer src="https://d3js.org/d3.v5.min.js"></script>
+    <script defer src="//d3js.org/d3.v3.js"></script>
   </head>
 
   <body onload=start()>
@@ -80,70 +80,119 @@
           },
           {name: 6, children: [{name: 10, children: []}]}
         ]
-      }
+      };
+
+      window.dag = {
+        "nodes": [
+          { "name": "node-0" }, // 0
+          { "name": "node-1" }, // 1
+          { "name": "node-2" }, // 2
+          { "name": "node-3" }, // 3
+          { "name": "node-4" }, // 4
+          { "name": "node-5" }, // 5
+          { "name": "node-6" }, // 6
+          { "name": "node-7" }, // 7
+          { "name": "node-8" }, // 8
+          { "name": "node-9" }  // 9
+        ],
+        "links": [
+          { "source": 0, "target": 1 },
+          { "source": 0, "target": 2 },
+          { "source": 0, "target": 3 },
+          { "source": 0, "target": 5 },
+          { "source": 1, "target": 4 },
+          { "source": 1, "target": 5 },
+          { "source": 2, "target": 5 },
+          { "source": 3, "target": 7 },
+          { "source": 4, "target": 6 },
+          { "source": 5, "target": 9 },
+          { "source": 7, "target": 8 }
+        ]
+      };
     </script>
     <!-- Connect UI actions to Go functions -->
     <script>
+      const radius = 6;
 
       let appSize = { width: 300, height: 300 }; /* Defaults */
       let svg;
+      let link, node;
+
+      let tooltip;
+      let fill;
+      let force;
+
+      let le, ne;
 
       function init(size) {
         appSize = size;
-        let svg = d3.select("svg")
+        fill = d3.scale.category20();
+        svg = d3.select("svg")
                 .style("width", appSize.width)
                 .style("height", appSize.height);
+        force = d3.layout.force()
+                .charge(-120)
+                .linkDistance(30)
+                .size([appSize.width - 20, appSize.height - 20])
+                .on("tick", tick);
 
-        console.log("init js processing.", size, dat);
+        le = svg.selectAll(".link");
+        ne = svg.selectAll(".node");
+
+        console.log("end of js initialization");
       }
 
       /**
        * Draw the visualization
        */
       function draw() {
-        let svg = d3.select("svg")
-          .style("width", appSize.width)
-          .style("height", appSize.height);
+        force.nodes(dag.nodes)
+             .links(dag.links)
+             .start();
 
-        let nodes = svg.append('g').attr('class', 'nodes').attr("transform", "translate(0," + 10 + ")");
-        let links = svg.append('g').attr('class', 'links').attr("transform", "translate(0," + 10 + ")");
+        // Update links.
+        le = le.data(dag.links, d => d.source.name + ',' +  d.target.name);
+        le.exit().remove();
+        le.enter()
+            .insert("line", ".node")
+            .attr("class", "link");
 
-        let tree = new Tree(1);
-        let root = d3.hierarchy(window.dat);
-        let treeLayout = d3.tree();
-        treeLayout.size([appSize.width - 20, appSize.height - 20]);
-        treeLayout(root);
+        ne = ne.data(dag.nodes, d => d.name);
 
-        nodes.selectAll("*").remove();
-        links.selectAll("*").remove();
+        ne.exit().remove();
 
-          // Nodes
-        nodes.selectAll('circle.node')
-            .data(root.descendants())
-            .enter()
-            .append('circle')
-            .classed('node', true)
-            .on("click", d => open(d.data.data.id))
-            .on("contextmenu", function (d, i) {
-              d3.event.preventDefault();
-              tree.getSubTree(d.data.data.id).KillYourChildren();
-              drawD3Tree(tree);
-            })
-            .attr('cx', d => d.x).attr('cy', d => d.y)
-            .attr('r', 4);
+        let nodeEnter = ne.enter().append("g")
+                .attr("class", "node")
+                .on("click", click);
 
-          // Links
-        links.selectAll('line.link')
-            .data(root.links())
-            .enter()
-            .append('line')
-            .classed('link', true)
-            .attr('x1', d => d.source.x).attr('y1', d => d.source.y)
-            .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+        nodeEnter.append("circle").attr("r", radius - .75);
 
-
-        console.log("end of draw call")
+        console.log("end of draw call");
       }
+
+      // On node click collapsible
+      function click(d) {
+        if (d3.event.defaultPrevented) return; // ignore drag
+
+        if (!dat.unusedLinks) dat.unusedLinks = [];
+        dag.links.filter(lk => lk.source.name === d.name).forEach(lk => dat.unusedLinks.push(lk));
+        dag.links = dag.links.filter(lk => lk.source.name !== d.name);
+
+        draw();
+      }
+
+      // On every simulation ticks
+      function tick(e) {
+        // Apply constraint (Push sources up and targets down to form a weak tree)
+        const k = 6 * e.alpha;
+        le.each(d => { d.source.y -= k; d.target.y += k; });
+
+        // Draw nodes and links
+        le.attr("x1", d => d.source.x).attr("y1", d => d.source.y)
+            .attr("x2", d => d.target.x).attr("y2", d => d.target.y);
+        ne.attr('transform', d => `translate(${d.x}, ${d.y})`);
+      }
+
     </script>
   </body>
 </html>

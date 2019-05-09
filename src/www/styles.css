@@ -27,3 +27,12 @@ svg {
     stroke: var(--link-color);
     stroke-width: 2px;
 }
+
+circle {
+    stroke-width: 2px;
+}
+
+line {
+    stroke: #999;
+    stroke-width: 2px;
+}
