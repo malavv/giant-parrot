@@ -17,6 +17,10 @@ svg {
     stroke-width: 2px;
 }
 
+.root circle {
+    fill: red;
+}
+
 .node text {
     font-size: 10px;
     font-family: sans-serif;
