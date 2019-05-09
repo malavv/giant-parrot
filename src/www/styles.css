@@ -1,0 +1,29 @@
+:root {
+    --node-color: steelblue;
+    --link-color: #aaa;
+}
+
+svg {
+    background-color: lightblue;
+}
+
+.node {
+    cursor: pointer;
+}
+
+.node circle {
+    fill: #fff;
+    stroke: var(--node-color);
+    stroke-width: 2px;
+}
+
+.node text {
+    font-size: 10px;
+    font-family: sans-serif;
+}
+
+.link {
+    fill: none;
+    stroke: var(--link-color);
+    stroke-width: 2px;
+}

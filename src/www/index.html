@@ -7,16 +7,8 @@
     <style>
       * { margin: 0; padding: 0; user-select: none; }
       body { height: 100vh; }
-      svg { padding: 100px; }
-      .node { cursor: pointer; }
-      .overlay { background-color: #EEE; }
-      .node circle { fill: #fff; stroke: steelblue; stroke-width: 1.5px; }
-      .node text { font-size: 10px; font-family: sans-serif; }
-      .link { fill: none; stroke: #ccc; stroke-width: 1.5px; }
-      .templink { fill: none; stroke: red; stroke-width: 3px; }
-      .ghostCircle.show { display: block; }
-      .ghostCircle, .activeDrag .ghostCircle { display: none; }
     </style>
+    <link rel="stylesheet" href="styles.css">
 
     <script defer src="https://d3js.org/d3.v5.min.js"></script>
   </head>
@@ -24,63 +16,10 @@
   <body onload=start()>
 
     <!-- UI layout -->
-    <button onclick="draw()">Draw</button>
-    <svg></svg>
+    <svg onclick="draw()"></svg>
 
-    <!-- Connect UI actions to Go functions -->
-    <script>
-
-      function init() {
-        console.log("init js processing.");
-      }
-
-      function draw() {
-          let svg = d3.select("svg")
-            .style("width", 500 + 'px')
-            .style("height", 500 + 'px');
-
-          svg.append('g').attr('class', 'nodes');
-          svg.append('g').attr('class', 'links');
-
-          let tree = new Tree(16479230);
-          let root = d3.hierarchy(tree.getData());
-          let treeLayout = d3.tree();
-          treeLayout.size([500, 500]);
-          treeLayout(root);
-
-          d3.select("svg g.nodes").selectAll("*").remove();
-          d3.select("svg g.links").selectAll("*").remove();
-
-          // Nodes
-          d3.select('svg g.nodes')
-              .selectAll('circle.node')
-              .data(root.descendants())
-              .enter()
-              .append('circle')
-              .classed('node', true)
-              .on("click", d => open(d.data.data.id))
-              .on("contextmenu", function (d, i) {
-                d3.event.preventDefault();
-                tree.getSubTree(d.data.data.id).KillYourChildren();
-                drawD3Tree(tree);
-              })
-              .attr('cx', d => d.x).attr('cy', d => d.y)
-              .attr('r', 4);
-
-          // Links
-          d3.select('svg g.links')
-              .selectAll('line.link')
-              .data(root.links())
-              .enter()
-              .append('line')
-              .classed('link', true)
-              .attr('x1', d => d.source.x).attr('y1', d => d.source.y)
-              .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
-
-
-        console.log("end of draw call")
-      }
-      class Tree {
+    <script type="module">
+      export default class Tree {
 
         constructor(rootID) {
           this.rootID = rootID;
@@ -114,6 +53,96 @@
         AddRelation(parent, child) {
           this.children.push(new Tree(child));
         }
+      }
+      window.Tree = Tree;
+    </script>
+    <script type="module">
+      window.dat = {
+        name: 1,
+        children: [
+          {
+            name: 2, children: [
+              {name: 5, children: [{name: 7, children: []}]},
+              {name: 6, children: [{name: 10, children: []}]}
+            ]
+          },
+          {
+            name: 3, children: [
+              {name: 6, children: [{name: 10, children: []}]}
+            ]
+          },
+          {
+            name: 4,
+            children: [
+              {name: 8, children: [{name: 9, children: []}]}
+
+            ]
+          },
+          {name: 6, children: [{name: 10, children: []}]}
+        ]
+      }
+    </script>
+    <!-- Connect UI actions to Go functions -->
+    <script>
+
+      let appSize = { width: 300, height: 300 }; /* Defaults */
+      let svg;
+
+      function init(size) {
+        appSize = size;
+        let svg = d3.select("svg")
+                .style("width", appSize.width)
+                .style("height", appSize.height);
+
+        console.log("init js processing.", size, dat);
+      }
+
+      /**
+       * Draw the visualization
+       */
+      function draw() {
+        let svg = d3.select("svg")
+          .style("width", appSize.width)
+          .style("height", appSize.height);
+
+        let nodes = svg.append('g').attr('class', 'nodes').attr("transform", "translate(0," + 10 + ")");
+        let links = svg.append('g').attr('class', 'links').attr("transform", "translate(0," + 10 + ")");
+
+        let tree = new Tree(1);
+        let root = d3.hierarchy(window.dat);
+        let treeLayout = d3.tree();
+        treeLayout.size([appSize.width - 20, appSize.height - 20]);
+        treeLayout(root);
+
+        nodes.selectAll("*").remove();
+        links.selectAll("*").remove();
+
+          // Nodes
+        nodes.selectAll('circle.node')
+            .data(root.descendants())
+            .enter()
+            .append('circle')
+            .classed('node', true)
+            .on("click", d => open(d.data.data.id))
+            .on("contextmenu", function (d, i) {
+              d3.event.preventDefault();
+              tree.getSubTree(d.data.data.id).KillYourChildren();
+              drawD3Tree(tree);
+            })
+            .attr('cx', d => d.x).attr('cy', d => d.y)
+            .attr('r', 4);
+
+          // Links
+        links.selectAll('line.link')
+            .data(root.links())
+            .enter()
+            .append('line')
+            .classed('link', true)
+            .attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+            .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+
+
+        console.log("end of draw call")
       }
     </script>
   </body>

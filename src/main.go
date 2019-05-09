@@ -25,7 +25,7 @@ func main() {
 	//ui.Bind("start", func() { log.Println("UI is ready") }) // This is supposed to work
 	ui.Bind("start", func() { 
 		ui.Eval(`console.log('UI is ready')`)
-		ui.Eval(`init()`)
+		ui.Eval(`init({width:500, height: 500})`)
 	})
 	ui.Bind("hello", func() { ui.Eval(`console.log('Hello world!')`) })
 
