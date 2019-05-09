@@ -17,7 +17,7 @@ import (
 func main() {
 	args := []string{}
 	
-	ui, err := lorca.New("", "", 516, 539, args...)
+	ui, err := lorca.New("", "", 1016, 1039, args...)
 	if err != nil { log.Fatal(err) }
 	defer ui.Close()
 
@@ -25,7 +25,7 @@ func main() {
 	//ui.Bind("start", func() { log.Println("UI is ready") }) // This is supposed to work
 	ui.Bind("start", func() { 
 		ui.Eval(`console.log('UI is ready')`)
-		ui.Eval(`init({width:500, height: 500})`)
+		ui.Eval(`init({width:1000, height: 1000})`)
 	})
 	ui.Bind("hello", func() { ui.Eval(`console.log('Hello world!')`) })
 
