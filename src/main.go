@@ -4,6 +4,7 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -13,6 +14,11 @@ import (
 	"github.com/zserge/lorca"
 )
 
+func OnData() string {
+	content, err := ioutil.ReadFile("data.json")
+	if err != nil { log.Fatal(err) }
+	return string(content)
+}
 
 func main() {
 	args := []string{}
@@ -28,6 +34,8 @@ func main() {
 		ui.Eval(`init({width:1000, height: 1000})`)
 	})
 	ui.Bind("hello", func() { ui.Eval(`console.log('Hello world!')`) })
+
+	ui.Bind("loadData", OnData)
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil { log.Fatal(err) }

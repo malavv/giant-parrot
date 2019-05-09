@@ -19,8 +19,6 @@
     <!-- UI layout -->
     <svg onclick="draw()"></svg>
 
-    <script src="data.js"></script>
-
     <!-- Connect UI actions to Go functions -->
     <script>
       const radius = 6;
@@ -32,9 +30,8 @@
       let tooltip;
       let fill;
       let force;
-
       let le, ne;
-
+      let dag;
       let tip;
 
       function init(size) {
@@ -61,6 +58,14 @@
         svg.call(tip);
 
         console.log("end of js initialization");
+
+        loadData()
+            .then(loadedData => dag = JSON.parse(loadedData))
+            .then(() => console.log('data is loaded', dag));
+      }
+
+      function onData(data) {
+        console.log('data', data);
       }
 
       /**
