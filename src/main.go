@@ -17,7 +17,7 @@ import (
 func main() {
 	args := []string{}
 	
-	ui, err := lorca.New("", "", 500, 500, args...)
+	ui, err := lorca.New("", "", 516, 539, args...)
 	if err != nil { log.Fatal(err) }
 	defer ui.Close()
 

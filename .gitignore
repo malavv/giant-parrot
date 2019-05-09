@@ -13,3 +13,6 @@
 
 # Output of the Lorca build system
 src/assets.go
+
+# Intellij
+.idea
