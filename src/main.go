@@ -20,6 +20,11 @@ func OnData() string {
 	return string(content)
 }
 
+func Fetch(aid string) string {
+	log.Printf("Article ID : %s\n", aid)
+	return OnData()
+}
+
 func main() {
 	args := []string{}
 	
@@ -31,11 +36,13 @@ func main() {
 	//ui.Bind("start", func() { log.Println("UI is ready") }) // This is supposed to work
 	ui.Bind("start", func() { 
 		ui.Eval(`console.log('UI is ready')`)
-		ui.Eval(`init({width:1000, height: 1000})`)
+		ui.Eval(`init({width:1000, height: 930})`)
 	})
 	ui.Bind("hello", func() { ui.Eval(`console.log('Hello world!')`) })
 
 	ui.Bind("loadData", OnData)
+
+	if err := ui.Bind("FetchArticleData", Fetch); err != nil { log.Fatal(err) }
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil { log.Fatal(err) }

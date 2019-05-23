@@ -6,7 +6,7 @@
     <title>Giant Parrot Citation Graph</title>
     <style>
       * { margin: 0; padding: 0; user-select: none; }
-      body { height: 100vh; }
+      body { height: 100vh; overflow: hidden; }
     </style>
     <link rel="stylesheet" href="styles.css">
 
@@ -16,8 +16,24 @@
 
   <body onload=start()>
 
+    <header>
+      <div class="article-input">
+        <label>Pubmed ID (PMID):
+          <input type="text" name="article-id" value="16479230" />
+        </label>
+        <button type="button" onclick="generate(this.parentNode)">Generate</button>
+      </div>
+    </header>
+
     <!-- UI layout -->
-    <svg onclick="draw()"></svg>
+    <svg></svg>
+
+    <footer>
+      <div class="status">
+        <span>Status :</span>
+        <span id="status-txt"></span>
+      </div>
+    </footer>
 
     <!-- Connect UI actions to Go functions -->
     <script>
@@ -33,6 +49,26 @@
       let le, ne;
       let dag;
       let tip;
+
+      function setStatus(msg) {
+        document.querySelector("#status-txt").textContent = msg;
+      }
+
+      function setDag(dagData) {
+        dag = dagData;
+        setStatus("data is loaded");
+      }
+
+      function generate(articleInputElem) {
+        const aid = articleInputElem.querySelector('input').value;
+        console.assert(aid != null && typeof aid === "string" && aid.trim() !== '', 'Invalid AID Entered');
+
+        FetchArticleData(aid)
+                .then(loadedData => setDag(JSON.parse(loadedData)))
+                .then(() => console.log('data is loaded', dag))
+                .then(() => draw())
+                .catch(err => console.error(err));
+      }
 
       function init(size) {
         appSize = size;
@@ -56,12 +92,6 @@
                 .html(d => `<strong>Title:</strong> <span style='color:red'>${d.title}</span>`);
 
         svg.call(tip);
-
-        console.log("end of js initialization");
-
-        loadData()
-            .then(loadedData => dag = JSON.parse(loadedData))
-            .then(() => console.log('data is loaded', dag));
       }
 
       function onData(data) {
@@ -129,6 +159,8 @@
             .attr("x2", d => d.target.x).attr("y2", d => d.target.y);
         ne.attr('transform', d => `translate(${d.x}, ${d.y})`);
       }
+
+      setStatus("no data");
 
     </script>
   </body>
