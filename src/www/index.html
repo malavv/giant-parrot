@@ -11,9 +11,14 @@
     <link rel="stylesheet" href="styles.css">
 
     <script defer src="//d3js.org/d3.v4.js"></script>
+
+    <script type="module">
+      import { DAG } from './dag.js';
+      window.DAG = DAG;
+    </script>
   </head>
 
-  <body onload=OnAppStarting()>
+  <body>
 
     <header>
       <div class="article-input">
@@ -169,6 +174,8 @@
       function init(size) {
         //appSize = size;
 
+        console.log(DAG.hello());
+
         svg = d3.select("svg");
 
         let rect = svg.node().getBoundingClientRect();
@@ -316,6 +323,8 @@
       setStatus("no data");
       ChangeJitter(1000);
 
+      // Loaded scripts are not available at this point.
+      document.addEventListener("DOMContentLoaded", () => OnAppStarting());
     </script>
   </body>
 </html>
