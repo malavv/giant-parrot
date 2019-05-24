@@ -16,12 +16,7 @@ import (
 
 type AppRes struct {
 	UI lorca.UI
-	Dim Dim2D
 	JitterMS int
-}
-
-type Dim2D struct {
-	width, height int
 }
 
 func main() {
@@ -33,7 +28,6 @@ func main() {
 
 	res := AppRes{
 		UI: ui,
-		Dim: Dim2D { width: 1000, height: 930 },
 	}
 
 	// Make Go Functions available
@@ -72,7 +66,7 @@ func OnAppStarting(res AppRes) {
 }
 
 func InitApp(res AppRes) {
-	res.UI.Eval(fmt.Sprintf("init({width: %d, height: %d})", res.Dim.width, res.Dim.height))
+	res.UI.Eval("init()")
 }
 
 func FetchAllData(res AppRes, aid string) string {
