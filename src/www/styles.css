@@ -4,6 +4,7 @@
 }
 
 svg {
+    flex: 1;
     background-color: lightblue;
 }
 
@@ -62,3 +63,6 @@ header div.article-input button {
     margin-left: 15px;
 }
 
+div.spacer {
+    width: 50px;
+}

@@ -6,15 +6,14 @@
     <title>Giant Parrot Citation Graph</title>
     <style>
       * { margin: 0; padding: 0; user-select: none; }
-      body { height: 100vh; overflow: hidden; }
+      body { height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
     </style>
     <link rel="stylesheet" href="styles.css">
 
-    <script defer src="//d3js.org/d3.v3.js"></script>
-    <script defer src="http://labratrevenge.com/d3-tip/javascripts/d3.tip.v0.6.3.js"></script>
+    <script defer src="//d3js.org/d3.v4.js"></script>
   </head>
 
-  <body onload=start()>
+  <body onload=OnAppStarting()>
 
     <header>
       <div class="article-input">
@@ -22,6 +21,7 @@
           <input type="text" name="article-id" value="16479230" />
         </label>
         <button type="button" onclick="generate(this.parentNode)">Generate</button>
+        <button type="button" onclick="simulation.stop()">Stop</button>
       </div>
     </header>
 
@@ -33,6 +33,12 @@
         <span>Status :</span>
         <span id="status-txt"></span>
       </div>
+      <div class="spacer"></div>
+      <div class="jitter-input">
+        <label>Between call delay MS:
+          <input type="text" name="jitter" value="1000" />
+        </label>
+      </div>
     </footer>
 
     <!-- Connect UI actions to Go functions -->
@@ -41,6 +47,7 @@
 
       let appSize = { width: 300, height: 300 }; /* Defaults */
       let svg;
+      let g;
       let link, node;
       const rootID = "16479230";
       let tooltip;
@@ -49,6 +56,14 @@
       let le, ne;
       let dag;
       let tip;
+      let simulation;
+      let color;
+
+      let nodes = [];
+      let links = [];
+
+      const linkID = link => `${link.source.PMID},${link.target.PMID}`;
+      const nodeID = node => `${node.PMID}`;
 
       function setStatus(msg) {
         document.querySelector("#status-txt").textContent = msg;
@@ -63,73 +78,211 @@
         const aid = articleInputElem.querySelector('input').value;
         console.assert(aid != null && typeof aid === "string" && aid.trim() !== '', 'Invalid AID Entered');
 
-        FetchArticleData(aid)
-                .then(loadedData => setDag(JSON.parse(loadedData)))
-                .then(() => console.log('data is loaded', dag))
-                .then(() => draw())
+
+        FetchAllData(aid)
+                .then(JSON.parse)
+                .then(json => setDag(json))
+                .then(() => onDataLoaded(aid))
                 .catch(err => console.error(err));
+
+
+        /*FetchArticleData(aid)
+                .then(JSON.parse)
+                .then(dat => addData(dat.nodes, dat.links))
+                //.then(dat => console.info(dat))
+                .catch(err => console.error(err)); */
+      }
+
+      function FetchArticleData(aid) {
+        let nds = [];
+        let lks = [];
+
+        const rootIdx = dag.nodes.findIndex(node => nodeID(node) === aid);
+        const src = dag.nodes[rootIdx];
+
+        nds.push(src);
+
+        const dstIdx = dag.links.filter(link => link.source === rootIdx).map(link => link.target);
+        const dstNodes = dstIdx.map(idx => dag.nodes[idx]);
+
+        dstNodes.forEach((n, i) => {
+          nds.push(n);
+          lks.push({source: 0, target: i + 1});
+        });
+
+        console.log('FetchArticleData for root : ', src, dstNodes);
+        return Promise.resolve({
+          nodes: nds,
+          links: lks
+        });
+      }
+
+      function addData(newNodes, newLinks) {
+
+        for (let n of newNodes) nodes.push(n);
+        for (let l of newLinks) links.push(l);
+
+        restart();
+      }
+
+      function onDataLoaded(aid) {
+        console.log('data is loaded', dag);
+
+        FetchArticleData(aid)
+            .then(res => {
+
+              console.assert(dag != null, 'Must have DAG data');
+
+              let newNodes = res.nodes.filter(n1 => !nodes.some(n2 => nodeID(n1) === nodeID(n2)));
+
+              for (let n of newNodes) {
+                nodes.push(n);
+              }
+
+
+              let newLinks = [];
+              for (let l of res.links) {
+                  const s = res.nodes[l.source];
+                  const d = res.nodes[l.target];
+
+                  const si = nodes.findIndex(n => nodeID(n) === nodeID(s));
+                  const di = nodes.findIndex(n => nodeID(n) === nodeID(d));
+                  newLinks.push({source: si, target: di});
+              }
+
+              for (let l of newLinks) {
+                setTimeout(() => {
+                  onDataLoaded(nodeID(l.target));
+                }, 1000);
+              }
+
+              newLinks.forEach(l => links.push(l));
+
+              restart();
+
+            });
+            //.then(console.info).catch(console.error);
+
+        //draw();
       }
 
       function init(size) {
-        appSize = size;
-        fill = d3.scale.category20();
-        svg = d3.select("svg")
-                .style("width", appSize.width)
-                .style("height", appSize.height);
+        //appSize = size;
+
+        svg = d3.select("svg");
+
+        let rect = svg.node().getBoundingClientRect();
+
+        console.log(rect);
+
+        appSize = {
+          width: rect.width,
+          height: rect.height
+        };
+
+        simulation = d3.forceSimulation(nodes)
+                .force("charge", d3.forceManyBody().strength(-40))
+                .force("link", d3.forceLink(links).distance(20))
+                .force("x", d3.forceX())
+                .force("y", d3.forceY())
+                .alphaTarget(0.5)
+                .on("tick", ticked);
+
+        g = svg.append("g")
+                .attr("transform", `translate(${appSize.width/2}, ${appSize.height/2})`);
+        link = g.append("g").selectAll(".link");
+        node = g.append("g").selectAll(".node");
+
+        //fill = d3.scale.category20();
+        color = d3.scaleOrdinal(d3.schemeCategory10);
+        /*
         force = d3.layout.force()
                 .charge(-120)
                 .linkDistance(30)
                 .size([appSize.width - 20, appSize.height - 20])
-                .on("tick", tick);
+                .on("tick", tick); */
 
-        le = svg.selectAll(".link");
-        ne = svg.selectAll(".node");
-
-        tip = d3.tip()
-                .attr('class', 'd3-tip')
-                //.offset([-10, 0])
-                .direction(d => d.y < appSize.height / 2 ? 's' : 'n')
-                .html(d => `<strong>Title:</strong> <span style='color:red'>${d.title}</span>`);
-
-        svg.call(tip);
+        restart();
       }
 
-      function onData(data) {
-        console.log('data', data);
+      function restart() {
+        // Apply the general update pattern to the nodes.
+        node = node.data(nodes, nodeID);
+        node.exit().transition()
+                .attr("r", 0)
+                .remove();
+        node = node.enter().append("circle")
+                .attr("fill", function(d) { return color(d.id); })
+                .call(function(node) { node.transition().attr("r", 8); })
+                .merge(node);
+        // Apply the general update pattern to the links.
+        link = link.data(links, linkID);
+        // Keep the exiting links connected to the moving remaining nodes.
+        link.exit().transition()
+                .attr("stroke-opacity", 0)
+                .attrTween("x1", function(d) { return function() { return d.source.x; }; })
+                .attrTween("x2", function(d) { return function() { return d.target.x; }; })
+                .attrTween("y1", function(d) { return function() { return d.source.y; }; })
+                .attrTween("y2", function(d) { return function() { return d.target.y; }; })
+                .remove();
+        link = link.enter().append("line")
+                .call(function(link) { link.transition().attr("stroke-opacity", 1); })
+                .merge(link);
+        // Update and restart the simulation.
+        simulation.nodes(nodes);
+        simulation.force("link").links(links);
+        simulation.alpha(1).restart();
+      }
+
+      function openLinkToArticle(node) {
+        d3.event.preventDefault();
+
+        window.open(`https://www.ncbi.nlm.nih.gov/pubmed/${node.PMID}`, '_blank');
+      }
+
+      function ticked() {
+        node.attr("cx", d =>  d.x).attr("cy", d =>  d.y);
+
+        link.attr("x1", d =>  d.source.x).attr("y1", d => d.source.y)
+            .attr("x2", d =>  d.target.x).attr("y2", d =>  d.target.y);
       }
 
       /**
        * Draw the visualization
        */
       function draw() {
-        force.nodes(dag.nodes)
-             .links(dag.links)
-             .start();
+        console.assert(dag != null, 'Must have DAG data');
+
+        for (let n of dag.nodes) nodes.push(n);
+        for (let l of dag.links) links.push(l);
+
+        restart();
+        /*
 
         // Update links.
-        le = le.data(dag.links, d => `${d.source.PMID},${d.target.PMID}`);
+        le = le.data(dag.links, linkID);
         le.exit().remove();
         le.enter()
             .insert("line", ".node")
             .attr("class", "link");
 
         // Update nodes
-        ne = ne.data(dag.nodes, d => d.PMID);
+        ne = ne.data(dag.nodes, nodeID);
         ne.exit().remove();
-        let nodeEnter = ne.enter().append("g")
-                .attr("class", d => d.PMID === rootID ? 'node root': 'node')
-                .on('contextmenu', d => {
-                  d3.event.preventDefault();
+        ne.enter()
+            .append("circle")
+            .attr("class", d => 'node ' + d.PMID === rootID ? 'root': '')
+            .on('contextmenu', openLinkToArticle)
+            .on("click", click)
+            .attr("r", radius - .75)
+            .on('mouseover', tip.show)
+            .on('mouseout', tip.hide);
 
-                  window.open(`https://www.ncbi.nlm.nih.gov/pubmed/${d.PMID}`, '_blank');
-                })
-                .on("click", click);
 
-        nodeEnter.append("circle")
-                .attr("r", radius - .75)
-                .on('mouseover', tip.show)
-                .on('mouseout', tip.hide);
-
+        force.nodes(dag.nodes);
+        force.links(dag.links);
+        force.alpha(1).restart();
+*/
         console.log("end of draw call");
       }
 
@@ -141,7 +294,7 @@
         dag.links.filter(lk => lk.source.PMID === d.PMID).forEach(lk => dag.unusedLinks.push(lk));
         dag.links = dag.links.filter(lk => lk.source.PMID !== d.PMID);
 
-        draw();
+        //draw();
       }
 
       // On every simulation ticks
@@ -161,6 +314,7 @@
       }
 
       setStatus("no data");
+      ChangeJitter(1000);
 
     </script>
   </body>

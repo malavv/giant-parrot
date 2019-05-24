@@ -14,47 +14,43 @@ import (
 	"github.com/zserge/lorca"
 )
 
-func OnData() string {
-	content, err := ioutil.ReadFile("data.json")
-	if err != nil { log.Fatal(err) }
-	return string(content)
+type AppRes struct {
+	UI lorca.UI
+	Dim Dim2D
+	JitterMS int
 }
 
-func Fetch(aid string) string {
-	log.Printf("Article ID : %s\n", aid)
-	return OnData()
+type Dim2D struct {
+	width, height int
 }
 
 func main() {
-	args := []string{}
-	
+	// Start Program
+	var args []string
 	ui, err := lorca.New("", "", 1016, 1039, args...)
 	if err != nil { log.Fatal(err) }
 	defer ui.Close()
 
-	// A simple way to know when UI is ready (uses body.onload event in JS)
-	//ui.Bind("start", func() { log.Println("UI is ready") }) // This is supposed to work
-	ui.Bind("start", func() { 
-		ui.Eval(`console.log('UI is ready')`)
-		ui.Eval(`init({width:1000, height: 930})`)
-	})
-	ui.Bind("hello", func() { ui.Eval(`console.log('Hello world!')`) })
+	res := AppRes{
+		UI: ui,
+		Dim: Dim2D { width: 1000, height: 930 },
+	}
 
-	ui.Bind("loadData", OnData)
+	// Make Go Functions available
 
-	if err := ui.Bind("FetchArticleData", Fetch); err != nil { log.Fatal(err) }
+	// Launched on body load by the JS
+	if err := ui.Bind("OnAppStarting", func() { OnAppStarting(res) }); err != nil { log.Fatal(err) }
+	// Called by JS to get Article Data from Pubmed
+	if err := ui.Bind("FetchArticleData", func(aid string) string { return FetchArticleData(res, aid) }); err != nil { log.Fatal(err) }
+	if err := ui.Bind("FetchAllData", func(aid string) string { return FetchAllData(res, aid) }); err != nil { log.Fatal(err) }
+	if err := ui.Bind("ChangeJitter", func(jitterMs int) { ChangeJitter(res, jitterMs) }); err != nil { log.Fatal(err) }
 
+	// Open FS resource (for CSS and stuff)
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil { log.Fatal(err) }
 	defer ln.Close()
 	go http.Serve(ln, http.FileServer(FS))
 	ui.Load(fmt.Sprintf("http://%s", ln.Addr()))
-
-	// You may use console.log to debug your JS code, it will be printed via
-	// log.Println(). Also exceptions are printed in a similar manner.
-	ui.Eval(`
-		console.log('Multiple values:', [1, false, {"x":5}]);
-	`)
 
 	// Wait until the interrupt signal arrives or browser window is closed
 	sigc := make(chan os.Signal)
@@ -63,8 +59,32 @@ func main() {
 		case <-sigc:
 		case <-ui.Done():
 	}
-
-	log.Println("exiting...")
 }
 
+func ChangeJitter(res AppRes, jitterMs int) {
+	fmt.Println("Changing Jitter to ", jitterMs)
+	res.JitterMS = jitterMs
+}
 
+func OnAppStarting(res AppRes) {
+	res.UI.Eval(`console.log('Server is ready')`)
+	InitApp(res)
+}
+
+func InitApp(res AppRes) {
+	res.UI.Eval(fmt.Sprintf("init({width: %d, height: %d})", res.Dim.width, res.Dim.height))
+}
+
+func FetchAllData(res AppRes, aid string) string {
+	log.Printf("Article ID : %s\n", aid)
+	content, err := ioutil.ReadFile("data.json")
+	if err != nil { log.Fatal(err) }
+	return string(content)
+}
+
+func FetchArticleData(res AppRes, aid string) string {
+	log.Printf("Article ID : %s\n", aid)
+	content, err := ioutil.ReadFile("data.json")
+	if err != nil { log.Fatal(err) }
+	return string(content)
+}
