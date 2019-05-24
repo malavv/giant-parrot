@@ -50,6 +50,7 @@
     <script>
       const radius = 6;
 
+      let i = 0;
       let appSize = { width: 300, height: 300 }; /* Defaults */
       let svg;
       let g;
@@ -88,26 +89,30 @@
         FetchAllData(aid)
                 .then(JSON.parse)
                 .then(json => setDag(json))
-                .then(() => onDataLoaded(aid))
+                .then(() => onDataLoaded([aid]))
                 .catch(err => console.error(err));
       }
 
       function FetchArticleData(aid) {
+        let tmp = dag.links.map(l => ({source: dag.nodes[l.source], target: dag.nodes[l.target]}));
+
         let nds = [];
         let lks = [];
 
-        const rootIdx = dag.nodes.findIndex(node => nodeID(node) === aid);
-        const src = dag.nodes[rootIdx];
+        // Add all nodes asked for.
+        for (let id of aid) {
+          for (let lk of tmp) {
+            if (nodeID(lk.source) !== id)
+              continue;
 
-        nds.push(src);
+            let sidx = nds.length;
+            nds.push(lk.source);
+            let didx = nds.length;
+            nds.push(lk.target);
 
-        const dstIdx = dag.links.filter(link => link.source === rootIdx).map(link => link.target);
-        const dstNodes = dstIdx.map(idx => dag.nodes[idx]);
-
-        dstNodes.forEach((n, i) => {
-          nds.push(n);
-          lks.push({source: 0, target: i + 1});
-        });
+            lks.push({ source: sidx, target: didx })
+          }
+        }
 
         return Promise.resolve({
           nodes: nds,
@@ -124,22 +129,20 @@
         return newNodes;
       }
 
-      function onDataLoaded(aid) {
+      function onDataLoaded(aids) {
 
-        FetchArticleData(aid)
+        FetchArticleData(aids)
             .then(res => {
               console.assert(dag != null, 'Must have DAG data');
+
+              console.log(`FetchArticleData(${aids.length}), i = ${i++}`);
 
               const newlyAdded = AddArticleDataToGraph(res.nodes, res.links);
 
               restart();
 
-              for (let n of newlyAdded) {
-                setTimeout(() => {
-                  onDataLoaded(nodeID(n));
-                }, 1000);
-              }
-
+              if (newlyAdded.length > 0)
+                setTimeout(() => { onDataLoaded(newlyAdded.map(n =>nodeID(n))); }, 1000);
             });
       }
 

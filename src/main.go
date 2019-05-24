@@ -35,7 +35,6 @@ func main() {
 	// Launched on body load by the JS
 	if err := ui.Bind("OnAppStarting", func() { OnAppStarting(res) }); err != nil { log.Fatal(err) }
 	// Called by JS to get Article Data from Pubmed
-	if err := ui.Bind("FetchArticleData", func(aid string) string { return FetchArticleData(res, aid) }); err != nil { log.Fatal(err) }
 	if err := ui.Bind("FetchAllData", func(aid string) string { return FetchAllData(res, aid) }); err != nil { log.Fatal(err) }
 	if err := ui.Bind("ChangeJitter", func(jitterMs int) { ChangeJitter(res, jitterMs) }); err != nil { log.Fatal(err) }
 
@@ -70,13 +69,6 @@ func InitApp(res AppRes) {
 }
 
 func FetchAllData(res AppRes, aid string) string {
-	log.Printf("Article ID : %s\n", aid)
-	content, err := ioutil.ReadFile("data.json")
-	if err != nil { log.Fatal(err) }
-	return string(content)
-}
-
-func FetchArticleData(res AppRes, aid string) string {
 	log.Printf("Article ID : %s\n", aid)
 	content, err := ioutil.ReadFile("data.json")
 	if err != nil { log.Fatal(err) }
