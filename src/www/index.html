@@ -115,7 +115,7 @@
           lks.push({source: 0, target: i + 1});
         });
 
-        console.log('FetchArticleData for root : ', src, dstNodes);
+        console.log(`FetchArticleData<root:${nodeID(src)}>`);
         return Promise.resolve({
           nodes: nds,
           links: lks
@@ -130,40 +130,49 @@
         restart();
       }
 
+      function AddArticleDataToGraph(datNodes, datLinks) {
+        const existNodes = new Set(nodes.map(nodeID));
+        const added = [];
+
+        datNodes.filter(n => !existNodes.has(nodeID(n)))
+                .forEach(n => {
+                  added.push(n);
+                  nodes.push(n);
+                });
+
+        const id2idx = new Map(nodes.map((n, i) => [nodeID(n), i]));
+
+        for (let l of datLinks) {
+          const sidx = id2idx.get(nodeID(datNodes[l.source]));
+          const didx = id2idx.get(nodeID(datNodes[l.target]));
+
+          if (links.some(lk => lk.source === sidx && lk.target === didx))
+            continue;
+
+          links.push({source: sidx, target: didx});
+        }
+
+        return added;
+      }
+
       function onDataLoaded(aid) {
-        console.log('data is loaded', dag);
 
         FetchArticleData(aid)
             .then(res => {
-
               console.assert(dag != null, 'Must have DAG data');
 
-              let newNodes = res.nodes.filter(n1 => !nodes.some(n2 => nodeID(n1) === nodeID(n2)));
+              const newlyAdded = AddArticleDataToGraph(res.nodes, res.links);
 
-              for (let n of newNodes) {
-                nodes.push(n);
-              }
-
-
-              let newLinks = [];
-              for (let l of res.links) {
-                  const s = res.nodes[l.source];
-                  const d = res.nodes[l.target];
-
-                  const si = nodes.findIndex(n => nodeID(n) === nodeID(s));
-                  const di = nodes.findIndex(n => nodeID(n) === nodeID(d));
-                  newLinks.push({source: si, target: di});
-              }
-
-              for (let l of newLinks) {
-                setTimeout(() => {
-                  onDataLoaded(nodeID(l.target));
-                }, 1000);
-              }
-
-              newLinks.forEach(l => links.push(l));
+              console.log('newly added', newlyAdded);
 
               restart();
+
+
+              for (let n of newlyAdded) {
+                setTimeout(() => {
+                  onDataLoaded(nodeID(n));
+                }, 1000);
+              }
 
             });
             //.then(console.info).catch(console.error);
