@@ -79,6 +79,15 @@
       const nodeID = node => node.PMID;
       const linkID = link => `${nodeID(link.source)},${nodeID(link.target)}`;
 
+      class Queue {
+        constructor() { this.data = []; }
+        enqueue(o) { this.data.unshift(o); }
+        dequeue() { return this.data.pop(); }
+        size() { return this.data.length; }
+      }
+
+      const tasks = new Queue();
+
       function setStatus(msg) {
         document.querySelector("#status-txt").textContent = msg;
       }
@@ -94,12 +103,30 @@
 
         rootID = aid;
 
-        // This (for tests) loads the full data, and then checks individual articles in it.
-        FetchAllData(aid)
-                .then(JSON.parse)
-                .then(json => setDag(json))
-                .then(() => onDataLoaded([aid]))
-                .catch(err => console.error(err));
+        tasks.enqueue(aid);
+
+        setInterval(() => {
+          DoFetch(tasks.dequeue());
+        }, 1000 /* ms */);
+      }
+
+      function DoFetch(aid) {
+        return FetchArticlesData([aid])
+                  .then(JSON.parse)
+                  .then(data => onNodeDataReceived([aid], data))
+                  .catch(err => console.error(err));
+      }
+
+      function onNodeDataReceived(forAIDs, data) {
+        const newlyAdded = AddArticleDataToGraph(data.nodes, data.links);
+
+        restart();
+
+        if (newlyAdded.length <= 0)
+          return;
+
+        for (let s of newlyAdded.map(n => nodeID(n)))
+          tasks.enqueue(s);
       }
 
       function FetchArticleData(aid) {
