@@ -198,13 +198,10 @@
                 .attr("r", 0)
                 .remove();
         node = node.enter().append("circle")
-                .attr("fill", function(d) {
-                  const id = nodeID(d);
-                  if (id === rootID)
-                    return "red";
-                  return myColor1(dg.pathLength(rootID, id));
-                })
+                .attr("fill", fillNodeColor)
                 .on("mouseover", onMouseOver)
+                .on("click", onClick)
+                .on("contextmenu", onContextMenu)
                 .call(function(node) { node.transition().attr("r", 8); })
                 .merge(node);
         // Apply the general update pattern to the links.
@@ -229,10 +226,23 @@
         document.getElementById("num-nodes").textContent = "" + dg.nodes.length;
       }
 
-      function openLinkToArticle(node) {
+      function fillNodeColor(d) {
+        const id = nodeID(d);
+        if (id === rootID)
+          return "red";
+        return myColor1(dg.pathLength(rootID, id));
+      }
+      function onClick(d) {
+        click(d);
+      }
+      function onContextMenu(d) {
+        console.log(`onContextMenu(${d})`);
+        openLinkToArticle(d);
         d3.event.preventDefault();
+      }
 
-        window.open(`https://www.ncbi.nlm.nih.gov/pubmed/${node.PMID}`, '_blank');
+      function openLinkToArticle(d) {
+        window.open(`https://www.ncbi.nlm.nih.gov/pubmed/${d.PMID}`, '_blank');
       }
 
       function ticked() {
@@ -247,11 +257,11 @@
       }
       // On node click collapsible
       function click(d) {
-        if (d3.event.defaultPrevented) return; // ignore drag
+        if (d3.event.defaultPrevented)
+          return; // ignore drag
 
-        if (!dag.unusedLinks) dag.unusedLinks = [];
-        dag.links.filter(lk => lk.source.PMID === d.PMID).forEach(lk => dag.unusedLinks.push(lk));
-        dag.links = dag.links.filter(lk => lk.source.PMID !== d.PMID);
+        dg.rmLinksWithSourceID(nodeID(d));
+        restart();
       }
 
       setStatus("no data");
