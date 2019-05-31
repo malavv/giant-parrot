@@ -6,6 +6,7 @@
 svg {
     flex: 1;
     background-color: lightblue;
+    width: 100%;
 }
 
 .node {
@@ -65,4 +66,18 @@ header div.article-input button {
 
 div.spacer {
     width: 50px;
+}
+
+div#status-bar {
+    display: flex;
+    flex-direction: row;
+    overflow: hidden;
+    white-space: nowrap;
+}
+div#status-bar div {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+span#cur-article {
+
 }

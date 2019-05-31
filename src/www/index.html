@@ -33,6 +33,11 @@
     <!-- UI layout -->
     <svg></svg>
 
+    <div id="status-bar">
+      <div>Hover : <span id="cur-article"></span></div>
+      <div style="flex: 1;"></div>
+    </div>
+
     <footer>
       <div class="status">
         <span>Status :</span>
@@ -43,6 +48,10 @@
         <label>Between call delay MS:
           <input type="text" name="jitter" value="1000" />
         </label>
+      </div>
+      <div class="spacer"></div>
+      <div class="num-nodes">
+        <div>Number of nodes : <span id="num-nodes">0</span></div>
       </div>
     </footer>
 
@@ -195,6 +204,7 @@
                     return "red";
                   return myColor1(dg.pathLength(rootID, id));
                 })
+                .on("mouseover", onMouseOver)
                 .call(function(node) { node.transition().attr("r", 8); })
                 .merge(node);
         // Apply the general update pattern to the links.
@@ -214,6 +224,9 @@
         simulation.nodes(dg.nodes);
         simulation.force("link").links(dg.links);
         simulation.alpha(1).restart();
+
+        // Update display
+        document.getElementById("num-nodes").textContent = "" + dg.nodes.length;
       }
 
       function openLinkToArticle(node) {
@@ -229,6 +242,9 @@
             .attr("x2", d =>  d.target.x).attr("y2", d => d.target.y);
       }
 
+      function onMouseOver(d) {
+        document.getElementById("cur-article").textContent = `[${d.id}] ${d.title} `;
+      }
       // On node click collapsible
       function click(d) {
         if (d3.event.defaultPrevented) return; // ignore drag

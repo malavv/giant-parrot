@@ -14,6 +14,7 @@ import (
 	"github.com/zserge/lorca"
 )
 
+// Application Resources
 type AppRes struct {
 	UI lorca.UI
 	JitterMS int
